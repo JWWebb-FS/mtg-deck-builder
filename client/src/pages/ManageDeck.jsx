@@ -10,7 +10,6 @@ export default function ManageDeck() {
     imageUrl: "",
   });
 
-  // State to hold the list of cards found by the search
   let [searchResults, setSearchResults] = useState([]);
 
   let handleSubmit = (e) => {
@@ -19,7 +18,6 @@ export default function ManageDeck() {
       .post("http://localhost:5000/api/cards", formData)
       .then(() => {
         alert("Card Added!");
-        // Clear the form after adding
         setFormData({
           name: "",
           type: "",
@@ -34,12 +32,14 @@ export default function ManageDeck() {
   let fetchScryfallData = () => {
     if (!formData.name) return alert("Enter part of a name first!");
 
-    // Using the search endpoint to find multiple matches
+    // Added '&order=edhrec' to sort by popularity so big cards show up in the top results
     axios
-      .get(`https://api.scryfall.com/cards/search?q=${formData.name}`)
+      .get(
+        `https://api.scryfall.com/cards/search?q=${formData.name}&order=edhrec`
+      )
       .then((res) => {
-        // Limit to top 5 results to keep the UI clean
-        setSearchResults(res.data.data.slice(0, 5));
+        // Increased slice to 10 to give you more options on your break
+        setSearchResults(res.data.data.slice(0, 10));
       })
       .catch((err) => {
         console.log(err);
@@ -48,15 +48,19 @@ export default function ManageDeck() {
   };
 
   let selectCard = (card) => {
+    // Safety check: handle double-faced cards by checking 'card_faces' if 'image_uris' is missing
+    let selectedImage =
+      card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || "";
+
     setFormData({
       ...formData,
       name: card.name,
       type: card.type_line,
       manaValue: card.cmc,
       price: card.prices.usd || "0.00",
-      imageUrl: card.image_uris?.normal || "",
+      imageUrl: selectedImage,
     });
-    setSearchResults([]); // Clear the list once a card is selected
+    setSearchResults([]);
   };
 
   return (
@@ -73,12 +77,15 @@ export default function ManageDeck() {
         <button
           type="button"
           onClick={fetchScryfallData}
-          style={{ backgroundColor: "#3a86ff", marginBottom: "10px" }}
+          style={{
+            backgroundColor: "#3a86ff",
+            marginBottom: "10px",
+            cursor: "pointer",
+          }}
         >
           Search Scryfall
         </button>
 
-        {/* Display Search Results for Selection */}
         {searchResults.length > 0 && (
           <div
             className="search-results"
@@ -87,6 +94,8 @@ export default function ManageDeck() {
               padding: "10px",
               borderRadius: "8px",
               marginBottom: "15px",
+              maxHeight: "300px",
+              overflowY: "auto", // Added scroll so it doesn't eat your whole screen
             }}
           >
             <p style={{ fontSize: "0.8rem", color: "#aaa" }}>
@@ -100,10 +109,27 @@ export default function ManageDeck() {
                   cursor: "pointer",
                   padding: "8px",
                   borderBottom: "1px solid #444",
-                  fontSize: "0.9rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
                 }}
               >
-                {card.name} — {card.set_name}
+                <img
+                  // Check card_faces for thumbnail too
+                  src={
+                    card.image_uris?.small ||
+                    card.card_faces?.[0]?.image_uris?.small ||
+                    ""
+                  }
+                  alt={card.name}
+                  style={{ width: "40px", borderRadius: "3px" }}
+                />
+                <div style={{ fontSize: "0.9rem" }}>
+                  <div style={{ fontWeight: "bold" }}>{card.name}</div>
+                  <div style={{ fontSize: "0.75rem", color: "#888" }}>
+                    {card.set_name}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -124,7 +150,9 @@ export default function ManageDeck() {
           }
         />
 
-        <button type="submit">Add to Deck</button>
+        <button type="submit" style={{ cursor: "pointer" }}>
+          Add to Deck
+        </button>
       </form>
     </div>
   );
