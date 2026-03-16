@@ -1,5 +1,9 @@
+// client/src/pages/ManageDeck.jsx
 import { useState } from "react";
 import axios from "axios";
+
+// Live Render URL
+let API_URL = "https://mtg-deck-builder-o20y.onrender.com";
 
 export default function ManageDeck() {
   let [formData, setFormData] = useState({
@@ -15,7 +19,7 @@ export default function ManageDeck() {
   let handleSubmit = (e) => {
     e.preventDefault();
     axios
-      .post("http://localhost:5000/api/cards", formData)
+      .post(`${API_URL}/api/cards`, formData)
       .then(() => {
         alert("Card Added!");
         setFormData({
@@ -31,7 +35,6 @@ export default function ManageDeck() {
 
   let fetchScryfallData = () => {
     if (!formData.name) return alert("Enter part of a name first!");
-
     axios
       .get(
         `https://api.scryfall.com/cards/search?q=${formData.name}&order=edhrec`
@@ -45,7 +48,6 @@ export default function ManageDeck() {
       });
   };
 
-  // --- NEW: Function to find all sets for a specific card name ---
   let fetchAllPrintings = (oracleId) => {
     axios
       .get(
@@ -60,7 +62,6 @@ export default function ManageDeck() {
   let selectCard = (card) => {
     let selectedImage =
       card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || "";
-
     setFormData({
       ...formData,
       name: card.name,
@@ -82,7 +83,6 @@ export default function ManageDeck() {
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
         />
-
         <button
           type="button"
           onClick={fetchScryfallData}
@@ -107,9 +107,6 @@ export default function ManageDeck() {
               overflowY: "auto",
             }}
           >
-            <p style={{ fontSize: "0.8rem", color: "#aaa" }}>
-              Select a version:
-            </p>
             {searchResults.map((card) => (
               <div
                 key={card.id}
@@ -146,8 +143,6 @@ export default function ManageDeck() {
                     </div>
                   </div>
                 </div>
-
-                {/* Button to swap to other printings if this isn't the right set */}
                 <button
                   type="button"
                   onClick={() => fetchAllPrintings(card.oracle_id)}
@@ -183,7 +178,6 @@ export default function ManageDeck() {
             setFormData({ ...formData, manaValue: e.target.value })
           }
         />
-
         <button type="submit" style={{ cursor: "pointer" }}>
           Add to Deck
         </button>

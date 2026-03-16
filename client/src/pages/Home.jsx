@@ -2,12 +2,15 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+// Live Render URL
+let API_URL = "https://mtg-deck-builder-o20y.onrender.com";
+
 export default function Home() {
   let [cards, setCards] = useState([]);
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/cards")
+      .get(`${API_URL}/api/cards`)
       .then((res) => setCards(res.data))
       .catch((err) => console.log(err));
   }, []);
@@ -15,36 +18,34 @@ export default function Home() {
   // DELETE LOGIC
   let deleteCard = (id) => {
     axios
-      .delete(`http://localhost:5000/api/cards/${id}`)
+      .delete(`${API_URL}/api/cards/${id}`)
       .then(() => {
-        // This line removes the card from your screen instantly
         setCards(cards.filter((card) => card._id !== id));
       })
       .catch((err) => console.log(err));
   };
+
   let updatePrice = (id, name) => {
     axios
       .get(`https://api.scryfall.com/cards/named?fuzzy=${name}`)
       .then((res) => {
         let newPrice = res.data.prices.usd || "N/A";
-        // Call YOUR API to update the database
         axios
-          .put(`http://localhost:5000/api/cards/${id}`, { price: newPrice })
+          .put(`${API_URL}/api/cards/${id}`, { price: newPrice })
           .then(() => {
             alert(`Updated ${name} price to $${newPrice}`);
-            // Refresh the list
             window.location.reload();
           });
       })
       .catch((err) => console.log("Price fetch failed", err));
   };
+
   return (
     <div className="deck-container">
       <h1>My MTG Deck List</h1>
       <div className="card-grid">
         {cards.map((card) => (
           <div key={card._id} className="mtg-card">
-            {/* 1. Added Card Image */}
             {card.imageUrl && (
               <img
                 src={card.imageUrl}
@@ -56,7 +57,6 @@ export default function Home() {
                 }}
               />
             )}
-
             <h3>{card.name}</h3>
             <p>
               <strong>Type:</strong> {card.type}
@@ -64,8 +64,6 @@ export default function Home() {
             <p>
               <strong>Mana Value:</strong> {card.manaValue}
             </p>
-
-            {/* 2. Added Price Display */}
             <p>
               <strong>Price:</strong> ${card.price || "0.00"}
             </p>
@@ -73,7 +71,6 @@ export default function Home() {
             <div
               style={{ display: "flex", gap: "10px", flexDirection: "column" }}
             >
-              {/* 3. Added Update Price Button */}
               <button
                 onClick={() => updatePrice(card._id, card.name)}
                 style={{
@@ -87,8 +84,6 @@ export default function Home() {
               >
                 Update Price
               </button>
-
-              {/* 4. Added Delete Button */}
               <button
                 onClick={() => deleteCard(card._id)}
                 style={{
