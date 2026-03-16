@@ -32,13 +32,11 @@ export default function ManageDeck() {
   let fetchScryfallData = () => {
     if (!formData.name) return alert("Enter part of a name first!");
 
-    // Added '&order=edhrec' to sort by popularity so big cards show up in the top results
     axios
       .get(
         `https://api.scryfall.com/cards/search?q=${formData.name}&order=edhrec`
       )
       .then((res) => {
-        // Increased slice to 10 to give you more options on your break
         setSearchResults(res.data.data.slice(0, 10));
       })
       .catch((err) => {
@@ -47,8 +45,19 @@ export default function ManageDeck() {
       });
   };
 
+  // --- NEW: Function to find all sets for a specific card name ---
+  let fetchAllPrintings = (oracleId) => {
+    axios
+      .get(
+        `https://api.scryfall.com/cards/search?q=oracle_id:${oracleId}&unique=prints`
+      )
+      .then((res) => {
+        setSearchResults(res.data.data);
+      })
+      .catch((err) => console.log("Could not find other sets", err));
+  };
+
   let selectCard = (card) => {
-    // Safety check: handle double-faced cards by checking 'card_faces' if 'image_uris' is missing
     let selectedImage =
       card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal || "";
 
@@ -94,42 +103,67 @@ export default function ManageDeck() {
               padding: "10px",
               borderRadius: "8px",
               marginBottom: "15px",
-              maxHeight: "300px",
-              overflowY: "auto", // Added scroll so it doesn't eat your whole screen
+              maxHeight: "350px",
+              overflowY: "auto",
             }}
           >
             <p style={{ fontSize: "0.8rem", color: "#aaa" }}>
-              Select the correct version:
+              Select a version:
             </p>
             {searchResults.map((card) => (
               <div
                 key={card.id}
-                onClick={() => selectCard(card)}
                 style={{
-                  cursor: "pointer",
                   padding: "8px",
                   borderBottom: "1px solid #444",
                   display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
+                  flexDirection: "column",
+                  gap: "5px",
                 }}
               >
-                <img
-                  // Check card_faces for thumbnail too
-                  src={
-                    card.image_uris?.small ||
-                    card.card_faces?.[0]?.image_uris?.small ||
-                    ""
-                  }
-                  alt={card.name}
-                  style={{ width: "40px", borderRadius: "3px" }}
-                />
-                <div style={{ fontSize: "0.9rem" }}>
-                  <div style={{ fontWeight: "bold" }}>{card.name}</div>
-                  <div style={{ fontSize: "0.75rem", color: "#888" }}>
-                    {card.set_name}
+                <div
+                  onClick={() => selectCard(card)}
+                  style={{
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                  }}
+                >
+                  <img
+                    src={
+                      card.image_uris?.small ||
+                      card.card_faces?.[0]?.image_uris?.small ||
+                      ""
+                    }
+                    alt={card.name}
+                    style={{ width: "40px", borderRadius: "3px" }}
+                  />
+                  <div style={{ fontSize: "0.9rem" }}>
+                    <div style={{ fontWeight: "bold" }}>{card.name}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#888" }}>
+                      {card.set_name}
+                    </div>
                   </div>
                 </div>
+
+                {/* Button to swap to other printings if this isn't the right set */}
+                <button
+                  type="button"
+                  onClick={() => fetchAllPrintings(card.oracle_id)}
+                  style={{
+                    fontSize: "0.65rem",
+                    width: "fit-content",
+                    background: "#444",
+                    color: "#fff",
+                    border: "none",
+                    padding: "2px 6px",
+                    borderRadius: "3px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Change Set / All Printings
+                </button>
               </div>
             ))}
           </div>
