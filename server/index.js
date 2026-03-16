@@ -11,11 +11,10 @@ let app = express();
 let PORT = process.env.PORT || 5000;
 
 // Middleware (Requirement #1)
-// Updated CORS to allow your specific Vercel URL
 app.use(
   cors({
     origin: [
-      "https://mtg-deck-builder-jwwebbfs.vercel.app",
+      "https://mtg-deck-builder-psi.vercel.app",
       "http://localhost:5173",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
