@@ -16,19 +16,21 @@ export default function ManageDeck() {
 
   let [searchResults, setSearchResults] = useState([]);
 
-  // Fix: Convert manaValue to a Number to prevent 400 Bad Request errors
   let handleSubmit = (e) => {
     e.preventDefault();
 
-    // Verification check for school requirements
+    // 1. Requirement Check: Ensure we actually have card data
     if (!formData.name || !formData.type) {
       return alert("Please search for and select a card first!");
     }
 
-    // Data cleaning
+    // 2. Data Cleaning: Explicitly set types to satisfy Mongoose Schema
     let dataToSubmit = {
-      ...formData,
-      manaValue: Number(formData.manaValue),
+      name: String(formData.name),
+      type: String(formData.type),
+      manaValue: Number(formData.manaValue) || 0, // Force to Number
+      price: String(formData.price || "0.00"), // Force to String
+      imageUrl: String(formData.imageUrl || ""),
     };
 
     axios
@@ -44,8 +46,9 @@ export default function ManageDeck() {
         });
       })
       .catch((err) => {
-        console.log("Submit error:", err);
-        alert("Server rejected the card data (Check Console).");
+        // Log the specific response for easier shop-floor debugging
+        console.log("Submit error:", err.response?.data || err.message);
+        alert("Server rejected the card data (Check F12 Console for detail).");
       });
   };
 
