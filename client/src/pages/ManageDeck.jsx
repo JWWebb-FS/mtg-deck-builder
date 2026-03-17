@@ -16,10 +16,23 @@ export default function ManageDeck() {
 
   let [searchResults, setSearchResults] = useState([]);
 
+  // Fix: Convert manaValue to a Number to prevent 400 Bad Request errors
   let handleSubmit = (e) => {
     e.preventDefault();
+
+    // Verification check for school requirements
+    if (!formData.name || !formData.type) {
+      return alert("Please search for and select a card first!");
+    }
+
+    // Data cleaning
+    let dataToSubmit = {
+      ...formData,
+      manaValue: Number(formData.manaValue),
+    };
+
     axios
-      .post(`${API_URL}/api/cards`, formData)
+      .post(`${API_URL}/api/cards`, dataToSubmit)
       .then(() => {
         alert("Card Added!");
         setFormData({
@@ -30,7 +43,10 @@ export default function ManageDeck() {
           imageUrl: "",
         });
       })
-      .catch((err) => console.log(err));
+      .catch((err) => {
+        console.log("Submit error:", err);
+        alert("Server rejected the card data (Check Console).");
+      });
   };
 
   let fetchScryfallData = () => {
@@ -175,7 +191,7 @@ export default function ManageDeck() {
           placeholder="Mana Value"
           value={formData.manaValue}
           onChange={(e) =>
-            setFormData({ ...formData, manaValue: e.target.value })
+            setFormData({ ...formData, manaValue: Number(e.target.value) })
           }
         />
         <button type="submit" style={{ cursor: "pointer" }}>
