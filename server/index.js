@@ -12,18 +12,15 @@ let app = express();
 let PORT = process.env.PORT || 5000;
 
 // Middleware (Requirement #1)
+// In your Backend index.js
 app.use(
   cors({
-    origin: [
-      "https://mtg-deck-builder-psi.vercel.app",
-      "http://localhost:5173",
-      "http://localhost:8081",
-      "https://mobile-mtg-deck-builder.vercel.app/",
-    ],
+    origin: "*", // This allows ANY site to access your API
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   }),
 );
+
 app.use(express.json());
 
 // MongoDB Connection (DaaS - Requirement #3)
