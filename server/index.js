@@ -16,10 +16,11 @@ app.use(
     origin: [
       "https://mtg-deck-builder-psi.vercel.app",
       "http://localhost:5173",
+      "http://localhost:8081",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
-  })
+  }),
 );
 app.use(express.json());
 
