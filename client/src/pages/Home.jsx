@@ -8,6 +8,7 @@ let API_URL = "https://mtg-deck-builder-o20y.onrender.com";
 export default function Home() {
   let [cards, setCards] = useState([]);
 
+  // 1. GET is public, so no token needed here
   useEffect(() => {
     axios
       .get(`${API_URL}/api/cards`)
@@ -15,26 +16,44 @@ export default function Home() {
       .catch((err) => console.log(err));
   }, []);
 
-  // DELETE LOGIC
+  // 2. DELETE LOGIC (Protected)
   let deleteCard = (id) => {
+    const token = localStorage.getItem("userToken"); // Grab token
+
+    if (!token) return alert("Please login to remove cards!");
+
     axios
-      .delete(`${API_URL}/api/cards/${id}`)
+      .delete(`${API_URL}/api/cards/${id}`, {
+        headers: { Authorization: `Bearer ${token}` } // Send token
+      })
       .then(() => {
         setCards(cards.filter((card) => card._id !== id));
       })
-      .catch((err) => console.log(err));
+      .catch((err) => {
+        console.log("Delete error:", err.response?.data || err.message);
+        alert("Not authorized to delete.");
+      });
   };
 
+  // 3. UPDATE LOGIC (Protected)
   let updatePrice = (id, name) => {
+    const token = localStorage.getItem("userToken");
+
+    if (!token) return alert("Please login to update prices!");
+
     axios
       .get(`https://api.scryfall.com/cards/named?fuzzy=${name}`)
       .then((res) => {
         let newPrice = res.data.prices.usd || "N/A";
         axios
-          .put(`${API_URL}/api/cards/${id}`, { price: newPrice })
+          .put(`${API_URL}/api/cards/${id}`, 
+            { price: newPrice }, 
+            { headers: { Authorization: `Bearer ${token}` } } // Send token
+          )
           .then(() => {
             alert(`Updated ${name} price to $${newPrice}`);
-            window.location.reload();
+            // Update local state instead of a full page reload for better UX
+            setCards(cards.map(card => card._id === id ? { ...card, price: newPrice } : card));
           });
       })
       .catch((err) => console.log("Price fetch failed", err));
@@ -58,42 +77,20 @@ export default function Home() {
               />
             )}
             <h3>{card.name}</h3>
-            <p>
-              <strong>Type:</strong> {card.type}
-            </p>
-            <p>
-              <strong>Mana Value:</strong> {card.manaValue}
-            </p>
-            <p>
-              <strong>Price:</strong> ${card.price || "0.00"}
-            </p>
+            <p><strong>Type:</strong> {card.type}</p>
+            <p><strong>Mana Value:</strong> {card.manaValue}</p>
+            <p><strong>Price:</strong> ${card.price || "0.00"}</p>
 
-            <div
-              style={{ display: "flex", gap: "10px", flexDirection: "column" }}
-            >
+            <div style={{ display: "flex", gap: "10px", flexDirection: "column" }}>
               <button
                 onClick={() => updatePrice(card._id, card.name)}
-                style={{
-                  backgroundColor: "#3a86ff",
-                  color: "white",
-                  border: "none",
-                  padding: "8px 10px",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
+                style={{ backgroundColor: "#3a86ff", color: "white", border: "none", padding: "8px 10px", borderRadius: "4px", cursor: "pointer" }}
               >
                 Update Price
               </button>
               <button
                 onClick={() => deleteCard(card._id)}
-                style={{
-                  backgroundColor: "#ff006e",
-                  color: "white",
-                  border: "none",
-                  padding: "8px 10px",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
+                style={{ backgroundColor: "#ff006e", color: "white", border: "none", padding: "8px 10px", borderRadius: "4px", cursor: "pointer" }}
               >
                 Remove Card
               </button>

@@ -1,58 +1,78 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  FlatList, 
-  Alert, 
-  ActivityIndicator 
+  View, Text, StyleSheet, TouchableOpacity, FlatList, 
+  Alert, ActivityIndicator, Image, RefreshControl 
 } from 'react-native';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
-  const [decks, setDecks] = useState([]);
-  const [loading, setLoading] = useState(true); // New loading state
+  const [cards, setCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   
-  // Update this to your live Render URL once it finishes deploying!
-  const API_URL = 'http://192.168.1.153:5000/api/decks';
+  const API_URL = 'https://mtg-deck-builder-o20y.onrender.com/api/cards';
+
+  const fetchCards = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        router.replace('/'); 
+        return;
+      }
+      const response = await axios.get(API_URL, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCards(response.data);
+    } catch (error) {
+      console.log(error);
+      Alert.alert('Error', 'Could not fetch your vault.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [router]);
 
   useEffect(() => {
-    const fetchDecks = async () => {
-      try {
-        setLoading(true); // Start the spinner
-        const token = await AsyncStorage.getItem('userToken');
-        
-        if (!token) {
-          router.replace('/'); 
-          return;
-        }
+    fetchCards();
+  }, [fetchCards]);
 
-        const response = await axios.get(API_URL, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        setDecks(response.data);
-      } catch (error) {
-        console.log(error);
-        Alert.alert('Error', 'Could not fetch your decks. Is the server awake?');
-      } finally {
-        setLoading(false); // Stop the spinner regardless of success or failure
-      }
-    };
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchCards();
+  }, [fetchCards]);
 
-    fetchDecks();
-  }, [router]);
+  const handleDelete = async (id, name) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      await axios.delete(`${API_URL}/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setCards(prev => prev.filter(card => card._id !== id));
+      Alert.alert('Deleted', `${name} removed from vault.`);
+    } catch (_error) { // Renamed to _error to satisfy ESLint
+      Alert.alert('Error', 'Failed to delete card.');
+    }
+  };
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userToken');
     router.replace('/');
   };
 
-  // If the app is still fetching data, show the loading circle
+  const renderRightActions = (id, name) => (
+    <TouchableOpacity 
+      style={styles.deleteAction} 
+      onPress={() => handleDelete(id, name)}
+    >
+      <Text style={styles.actionText}>Delete</Text>
+    </TouchableOpacity>
+  );
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -63,94 +83,74 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>MTG Vault</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>MTG Vault</Text>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity onPress={() => router.push('/add-card')} style={styles.addButton}>
+              <Text style={styles.addButtonText}>+</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-      <Text style={styles.subtitle}>Your Decks (Protected Data)</Text>
-
-      {decks.length === 0 ? (
-        <Text style={styles.emptyText}>No decks found. The vault is empty!</Text>
-      ) : (
         <FlatList
-          data={decks}
+          data={cards}
           keyExtractor={(item) => item._id}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+          }
           renderItem={({ item }) => (
-            <View style={styles.deckCard}>
-              <Text style={styles.deckName}>{item.name || item.title || 'Unnamed Deck'}</Text>
-            </View>
+            <Swipeable renderRightActions={() => renderRightActions(item._id, item.name)}>
+              {/* Added navigation to Card Details screen */}
+              <TouchableOpacity onPress={() => router.push(`/card-details/${item._id}`)}>
+                <View style={styles.cardItem}>
+                  {item.imageUrl && (
+                    <Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="contain" />
+                  )}
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardName}>{item.name}</Text>
+                    <Text style={styles.cardType}>{item.type}</Text>
+                    <Text style={styles.cardPrice}>${item.price || '0.00'}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </Swipeable>
           )}
         />
-      )}
-    </View>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#f5f5f5',
-    paddingTop: 50,
-  },
-  loadingContainer: {
-    flex: 1,
+  container: { flex: 1, padding: 20, backgroundColor: '#1a1a1a', paddingTop: 50 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a' },
+  loadingText: { marginTop: 10, fontSize: 16, color: '#aaa' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  addButton: { backgroundColor: '#28a745', width: 35, height: 35, borderRadius: 17.5, justifyContent: 'center', alignItems: 'center' },
+  addButtonText: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+  logoutButton: { backgroundColor: '#ff4d4d', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 },
+  logoutText: { color: '#fff', fontWeight: 'bold' },
+  cardItem: { backgroundColor: '#2a2a2a', padding: 12, borderRadius: 12, marginBottom: 10, flexDirection: 'row', alignItems: 'center' },
+  cardImage: { width: 50, height: 70, borderRadius: 4, marginRight: 12 },
+  cardInfo: { flex: 1 },
+  cardName: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  cardType: { fontSize: 12, color: '#aaa' },
+  cardPrice: { fontSize: 14, color: '#3a86ff', fontWeight: 'bold', marginTop: 4 },
+  deleteAction: {
+    backgroundColor: '#ff006e',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#555',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  logoutButton: {
-    backgroundColor: '#ff4d4d',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-  },
-  logoutText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#555',
-    marginBottom: 15,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#888',
-    marginTop: 50,
-    fontStyle: 'italic',
-  },
-  deckCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 8,
+    width: 80,
+    height: '87%',
+    borderRadius: 12,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
   },
-  deckName: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
+  actionText: { color: '#fff', fontWeight: 'bold' },
 });

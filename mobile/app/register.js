@@ -10,7 +10,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   
   const router = useRouter();
-  const API_URL = 'http://192.168.1.153:5000/api/auth/register'; 
+  const API_URL = 'https://mtg-deck-builder-o20y.onrender.com'; 
 
   const handleRegister = async () => {
     if (!username || !email || !password) {
