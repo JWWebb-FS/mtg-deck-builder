@@ -1,52 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  FlatList, 
+  Alert, 
+  ActivityIndicator 
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
   const [decks, setDecks] = useState([]);
+  const [loading, setLoading] = useState(true); // New loading state
   const router = useRouter();
   
-  // Hitting your decks endpoint
+  // Update this to your live Render URL once it finishes deploying!
   const API_URL = 'http://192.168.1.153:5000/api/decks';
 
-  // This runs automatically when the screen loads
   useEffect(() => {
-    // We moved the function INSIDE the useEffect to keep the linter happy!
     const fetchDecks = async () => {
       try {
-        // 1. Grab the secure token we saved during Login/Register
+        setLoading(true); // Start the spinner
         const token = await AsyncStorage.getItem('userToken');
         
-        // If there's no token, kick them back to the login screen
         if (!token) {
           router.replace('/'); 
           return;
         }
 
-        // 2. Make the request to your API, attaching the token as proof of auth
         const response = await axios.get(API_URL, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        // 3. Save the database data to our state to display it
         setDecks(response.data);
       } catch (error) {
         console.log(error);
-        Alert.alert('Error', 'Could not fetch your decks from the vault.');
+        Alert.alert('Error', 'Could not fetch your decks. Is the server awake?');
+      } finally {
+        setLoading(false); // Stop the spinner regardless of success or failure
       }
     };
 
-    // Now we call it right after defining it
     fetchDecks();
-  }, [router]); // Added router to the dependency array just in case React asks for it next!
+  }, [router]);
 
   const handleLogout = async () => {
-    // Delete the token from the phone and route back to login
     await AsyncStorage.removeItem('userToken');
     router.replace('/');
   };
+
+  // If the app is still fetching data, show the loading circle
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007bff" />
+        <Text style={styles.loadingText}>Waking up the Vault...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -67,7 +81,6 @@ export default function HomeScreen() {
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
             <View style={styles.deckCard}>
-              {/* Assuming your Deck model has a 'name' or 'title' property */}
               <Text style={styles.deckName}>{item.name || item.title || 'Unnamed Deck'}</Text>
             </View>
           )}
@@ -82,7 +95,18 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#f5f5f5',
-    paddingTop: 50, // Gives space for the iOS notch
+    paddingTop: 50,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#555',
   },
   header: {
     flexDirection: 'row',
