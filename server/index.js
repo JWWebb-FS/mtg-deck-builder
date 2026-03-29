@@ -4,18 +4,21 @@ let mongoose = require("mongoose");
 let cors = require("cors");
 require("dotenv").config();
 
-// Import the Models (Requirement #5)
+// Import the Models
 let Card = require("./models/Card");
 let Deck = require("./models/Deck");
+
+// Import Auth Routes and Middleware (New for Phase 1)
+const authRoutes = require("./routes/authRoutes");
+const { protect } = require("./middleware/auth"); 
 
 let app = express();
 let PORT = process.env.PORT || 5000;
 
-// Middleware (Requirement #1)
-// In your Backend index.js
+// Middleware
 app.use(
   cors({
-    origin: "*", // This allows ANY site to access your API
+    origin: "*", 
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   }),
@@ -23,15 +26,19 @@ app.use(
 
 app.use(express.json());
 
-// MongoDB Connection (DaaS - Requirement #3)
+// MongoDB Connection
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MTG Database Connected"))
   .catch((err) => console.log("Conn Error Check .env:", err));
 
-// --- API ROUTES (Requirement #3 & #4) ---
+// --- API ROUTES ---
+
+// 1. AUTH ROUTES (New)
+app.use("/api/auth", authRoutes);
 
 // --- CARD ROUTES ---
+// Public: Anyone can view cards
 app.get("/api/cards", async (req, res) => {
   try {
     let cards = await Card.find();
@@ -41,7 +48,8 @@ app.get("/api/cards", async (req, res) => {
   }
 });
 
-app.post("/api/cards", async (req, res) => {
+// Protected: Must be logged in to create, update, or delete cards
+app.post("/api/cards", protect, async (req, res) => {
   try {
     let newCard = new Card(req.body);
     await newCard.save();
@@ -51,7 +59,7 @@ app.post("/api/cards", async (req, res) => {
   }
 });
 
-app.put("/api/cards/:id", async (req, res) => {
+app.put("/api/cards/:id", protect, async (req, res) => {
   try {
     let updatedCard = await Card.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -62,7 +70,7 @@ app.put("/api/cards/:id", async (req, res) => {
   }
 });
 
-app.delete("/api/cards/:id", async (req, res) => {
+app.delete("/api/cards/:id", protect, async (req, res) => {
   try {
     let deletedCard = await Card.findByIdAndDelete(req.params.id);
     res.status(200).json(deletedCard);
@@ -71,8 +79,8 @@ app.delete("/api/cards/:id", async (req, res) => {
   }
 });
 
-// --- DECK ROUTES (New Module) ---
-// 1. GET: Fetch all decks from the vault
+// --- DECK ROUTES ---
+// Public: Anyone can view decks
 app.get("/api/decks", async (req, res) => {
   try {
     let decks = await Deck.find();
@@ -82,8 +90,8 @@ app.get("/api/decks", async (req, res) => {
   }
 });
 
-// 2. POST: Create a new deck in the vault
-app.post("/api/decks", async (req, res) => {
+// Protected: Must be logged in to create, update, or delete decks
+app.post("/api/decks", protect, async (req, res) => {
   try {
     let newDeck = new Deck(req.body);
     await newDeck.save();
@@ -93,8 +101,7 @@ app.post("/api/decks", async (req, res) => {
   }
 });
 
-// 3. PUT: Update deck details
-app.put("/api/decks/:id", async (req, res) => {
+app.put("/api/decks/:id", protect, async (req, res) => {
   try {
     let updatedDeck = await Deck.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -105,8 +112,7 @@ app.put("/api/decks/:id", async (req, res) => {
   }
 });
 
-// 4. DELETE: Remove a deck by ID
-app.delete("/api/decks/:id", async (req, res) => {
+app.delete("/api/decks/:id", protect, async (req, res) => {
   try {
     let deletedDeck = await Deck.findByIdAndDelete(req.params.id);
     res.status(200).json(deletedDeck);
