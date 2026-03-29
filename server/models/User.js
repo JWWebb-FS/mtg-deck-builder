@@ -24,19 +24,13 @@ const UserSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Pre-save middleware to hash the password before saving to the database
-UserSchema.pre('save', async function(next) {
+UserSchema.pre('save', async function() {
   // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password')) return;
 
-  try {
-    // Generate a salt (random string added to the password before hashing)
-    const salt = await bcrypt.genSalt(10);
-    // Hash the password with the salt
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (err) {
-    next(err);
-  }
+  // Generate a salt and hash the password (No 'next' needed!)
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Method to compare a plain text password with the hashed password in the database
