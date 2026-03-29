@@ -19,22 +19,33 @@ export default function ManageDeck() {
   let handleSubmit = (e) => {
     e.preventDefault();
 
-    // 1. Requirement Check: Ensure we actually have card data
+    // 1. Requirement Check: Get the token from local storage
+    const token = localStorage.getItem("userToken");
+
+    // 2. Alert if not logged in (since the backend will reject it anyway)
+    if (!token) {
+      return alert("You must be logged in to add cards to the vault!");
+    }
+
     if (!formData.name || !formData.type) {
       return alert("Please search for and select a card first!");
     }
 
-    // 2. Data Cleaning: Explicitly set types to satisfy Mongoose Schema
     let dataToSubmit = {
       name: String(formData.name),
       type: String(formData.type),
-      manaValue: Number(formData.manaValue) || 0, // Force to Number
-      price: String(formData.price || "0.00"), // Force to String
+      manaValue: Number(formData.manaValue) || 0,
+      price: String(formData.price || "0.00"),
       imageUrl: String(formData.imageUrl || ""),
     };
 
+    // 3. Add the headers object as the third argument in axios.post
     axios
-      .post(`${API_URL}/api/cards`, dataToSubmit)
+      .post(`${API_URL}/api/cards`, dataToSubmit, {
+        headers: {
+          Authorization: `Bearer ${token}` // This sends the token to your protect middleware
+        }
+      })
       .then(() => {
         alert("Card Added!");
         setFormData({
@@ -46,9 +57,8 @@ export default function ManageDeck() {
         });
       })
       .catch((err) => {
-        // Log the specific response for easier shop-floor debugging
         console.log("Submit error:", err.response?.data || err.message);
-        alert("Server rejected the card data (Check F12 Console for detail).");
+        alert("Server rejected the card data. Ensure you are logged in.");
       });
   };
 
