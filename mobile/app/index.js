@@ -9,6 +9,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const router = useRouter();
 
+  // The base URL for your Render backend
   const API_URL = 'https://mtg-deck-builder-o20y.onrender.com';
 
   const handleLogin = async () => {
@@ -18,22 +19,25 @@ export default function LoginScreen() {
     }
 
     try {
-      const response = await axios.post(API_URL, {
+      // FIX: Appended /api/auth/login to ensure the request hits your auth logic
+      const response = await axios.post(`${API_URL}/api/auth/login`, {
         email,
         password,
       });
 
+      // If the backend returns a token, store it and move to the home screen
       if (response.data.token) {
         await AsyncStorage.setItem('userToken', response.data.token);
         router.replace('/home');
       }
     } catch (error) {
+      // Log the specific error for debugging in your terminal
+      console.log("Login Error:", error.response?.data || error.message);
       Alert.alert('Login Failed', error.response?.data?.message || 'Invalid credentials');
     }
   };
 
   return (
-    // This wrapper listens for taps outside the inputs and dismisses the keyboard
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
         <Text style={styles.title}>MTG Vault Login</Text>
@@ -42,7 +46,7 @@ export default function LoginScreen() {
           <Text style={styles.label}>Email Address</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. chandra@gatewatch.com"
+            placeholder="e.g. jace@beleren.com"
             placeholderTextColor="#999"
             value={email}
             onChangeText={setEmail}
@@ -60,7 +64,6 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            // This adds a "Done" button to the iOS keyboard that submits the form
             returnKeyType="done"
             onSubmitEditing={handleLogin}
           />

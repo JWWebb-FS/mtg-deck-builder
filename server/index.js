@@ -8,7 +8,7 @@ require("dotenv").config();
 let Card = require("./models/Card");
 let Deck = require("./models/Deck");
 
-// Import Auth Routes and Middleware (New for Phase 1)
+// Import Auth Routes and Middleware
 const authRoutes = require("./routes/authRoutes");
 const { protect } = require("./middleware/auth"); 
 
@@ -34,17 +34,28 @@ mongoose
 
 // --- API ROUTES ---
 
-// 1. AUTH ROUTES (New)
+// 1. AUTH ROUTES
 app.use("/api/auth", authRoutes);
 
 // --- CARD ROUTES ---
-// Public: Anyone can view cards
+// Public: Anyone can view all cards
 app.get("/api/cards", async (req, res) => {
   try {
     let cards = await Card.find();
     res.json(cards);
   } catch (err) {
     res.status(500).json({ message: "Error fetching cards" });
+  }
+});
+
+// NEW: Get a single card by ID (Used by mobile details screen)
+app.get("/api/cards/:id", protect, async (req, res) => {
+  try {
+    let card = await Card.findById(req.params.id);
+    if (!card) return res.status(404).json({ message: "Card not found" });
+    res.json(card);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching card details" });
   }
 });
 
@@ -80,13 +91,24 @@ app.delete("/api/cards/:id", protect, async (req, res) => {
 });
 
 // --- DECK ROUTES ---
-// Public: Anyone can view decks
+// Public: Anyone can view all decks
 app.get("/api/decks", async (req, res) => {
   try {
     let decks = await Deck.find();
     res.json(decks);
   } catch (err) {
     res.status(500).json({ message: "Error fetching decks" });
+  }
+});
+
+// NEW: Get a single deck by ID
+app.get("/api/decks/:id", protect, async (req, res) => {
+  try {
+    let deck = await Deck.findById(req.params.id);
+    if (!deck) return res.status(404).json({ message: "Deck not found" });
+    res.json(deck);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching deck details" });
   }
 });
 

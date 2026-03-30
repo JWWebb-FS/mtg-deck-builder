@@ -10,6 +10,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   
   const router = useRouter();
+  // Your live Render backend URL
   const API_URL = 'https://mtg-deck-builder-o20y.onrender.com'; 
 
   const handleRegister = async () => {
@@ -19,24 +20,27 @@ export default function RegisterScreen() {
     }
 
     try {
-      const response = await axios.post(API_URL, {
+      // FIX: Appended /api/auth/register to target the correct backend route
+      const response = await axios.post(`${API_URL}/api/auth/register`, {
         username,
         email,
         password,
       });
 
       if (response.data.token) {
+        // Store the token and navigate to the vault home screen
         await AsyncStorage.setItem('userToken', response.data.token);
         Alert.alert('Success', 'Account created successfully!');
         router.replace('/home');
       }
     } catch (error) {
+      // Log the specific error to your terminal for troubleshooting
+      console.log("Registration Error:", error.response?.data || error.message);
       Alert.alert('Registration Failed', error.response?.data?.message || 'Something went wrong');
     }
   };
 
   return (
-    // This wrapper listens for taps outside the inputs and dismisses the keyboard
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
         <Text style={styles.title}>Create Account</Text>
@@ -75,7 +79,6 @@ export default function RegisterScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-            // This adds a "Done" button to the iOS keyboard that submits the form
             returnKeyType="done"
             onSubmitEditing={handleRegister} 
           />
@@ -93,7 +96,6 @@ export default function RegisterScreen() {
   );
 }
 
-// ... styles remain exactly the same ...
 const styles = StyleSheet.create({
   container: {
     flex: 1,

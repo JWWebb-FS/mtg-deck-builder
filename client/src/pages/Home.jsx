@@ -16,15 +16,21 @@ export default function Home() {
       .catch((err) => console.log(err));
   }, []);
 
+  // NEW: Calculate total value from the card array
+  const totalValue = cards.reduce((sum, card) => {
+    const price = parseFloat(card.price) || 0;
+    return sum + price;
+  }, 0).toFixed(2);
+
   // 2. DELETE LOGIC (Protected)
   let deleteCard = (id) => {
-    const token = localStorage.getItem("userToken"); // Grab token
+    const token = localStorage.getItem("userToken");
 
     if (!token) return alert("Please login to remove cards!");
 
     axios
       .delete(`${API_URL}/api/cards/${id}`, {
-        headers: { Authorization: `Bearer ${token}` } // Send token
+        headers: { Authorization: `Bearer ${token}` }
       })
       .then(() => {
         setCards(cards.filter((card) => card._id !== id));
@@ -48,11 +54,10 @@ export default function Home() {
         axios
           .put(`${API_URL}/api/cards/${id}`, 
             { price: newPrice }, 
-            { headers: { Authorization: `Bearer ${token}` } } // Send token
+            { headers: { Authorization: `Bearer ${token}` } }
           )
           .then(() => {
             alert(`Updated ${name} price to $${newPrice}`);
-            // Update local state instead of a full page reload for better UX
             setCards(cards.map(card => card._id === id ? { ...card, price: newPrice } : card));
           });
       })
@@ -61,7 +66,14 @@ export default function Home() {
 
   return (
     <div className="deck-container">
-      <h1>My MTG Deck List</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1>My MTG Deck List</h1>
+        {/* NEW: Total Value Badge */}
+        <div style={{ backgroundColor: "#28a745", color: "white", padding: "10px 20px", borderRadius: "8px", fontWeight: "bold" }}>
+          Vault Value: ${totalValue}
+        </div>
+      </div>
+
       <div className="card-grid">
         {cards.map((card) => (
           <div key={card._id} className="mtg-card">
