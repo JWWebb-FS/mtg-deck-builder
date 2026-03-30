@@ -11,46 +11,57 @@ export default function CardDetailsScreen() {
   const { id } = useLocalSearchParams(); 
   const [card, setCard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const router = useRouter();
 
-  // 1. Keep this as the BASE cards path
   const API_URL = 'https://mtg-deck-builder-o20y.onrender.com/api/cards';
 
   useEffect(() => {
     const fetchCardDetails = async () => {
       try {
         const token = await AsyncStorage.getItem('userToken');
-        
-        // 2. DEBUG: This will show you the exact URL in your VSCodium terminal
-        console.log("Fetching from:", `${API_URL}/${id}`);
-
-        // 3. Ensure there is a SLASH between the URL and the ID
         const response = await axios.get(`${API_URL}/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
         setCard(response.data);
       } catch (_err) {
-        console.log("Details Error:", _err.response?.data || _err.message);
-        Alert.alert('Error', 'Could not load card details. Check if Render is finished deploying.');
+        Alert.alert('Error', 'Could not load card details.');
         router.back();
       } finally {
         setLoading(false);
       }
     };
-
     if (id) fetchCardDetails();
   }, [id, router]);
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007bff" />
-      </View>
-    );
-  }
+  // NEW: Refresh Price Logic
+  const refreshPrice = async () => {
+    setUpdating(true);
+    try {
+      // 1. Get fresh data from Scryfall
+      const scryfallRes = await axios.get(`https://api.scryfall.com/cards/named?fuzzy=${card.name}`);
+      const newPrice = scryfallRes.data.prices.usd || "0.00";
 
-  if (!card) return null;
+      // 2. Update your Render backend
+      const token = await AsyncStorage.getItem('userToken');
+      await axios.put(`${API_URL}/${id}`, 
+        { price: newPrice }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      // 3. Update local UI
+      setCard({ ...card, price: newPrice });
+      Alert.alert('Success', `Price updated to $${newPrice}`);
+    } catch (_err) {
+      Alert.alert('Error', 'Could not update price.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  if (loading) return (
+    <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#007bff" /></View>
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -59,11 +70,7 @@ export default function CardDetailsScreen() {
       </TouchableOpacity>
 
       <View style={styles.cardWrapper}>
-        <Image 
-          source={{ uri: card.imageUrl }} 
-          style={styles.fullCardImage} 
-          resizeMode="contain" 
-        />
+        <Image source={{ uri: card.imageUrl }} style={styles.fullCardImage} resizeMode="contain" />
         
         <View style={styles.detailsBox}>
           <Text style={styles.cardName}>{card.name}</Text>
@@ -76,9 +83,20 @@ export default function CardDetailsScreen() {
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Current Price</Text>
-              <Text style={styles.statValue}>${card.price || '0.00'}</Text>
+              <Text style={styles.statValue}>${card.price}</Text>
             </View>
           </View>
+
+          {/* NEW: Refresh Button */}
+          <TouchableOpacity 
+            style={[styles.refreshButton, updating && { opacity: 0.6 }]} 
+            onPress={refreshPrice}
+            disabled={updating}
+          >
+            <Text style={styles.refreshText}>
+              {updating ? 'Updating...' : 'Refresh Live Price'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
@@ -92,19 +110,13 @@ const styles = StyleSheet.create({
   backText: { color: '#007bff', fontSize: 16, fontWeight: 'bold' },
   cardWrapper: { alignItems: 'center', paddingBottom: 40 },
   fullCardImage: { width: '100%', height: 450, borderRadius: 15 },
-  detailsBox: { 
-    width: '100%', 
-    backgroundColor: '#2a2a2a', 
-    padding: 20, 
-    borderRadius: 15, 
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#444'
-  },
+  detailsBox: { width: '100%', backgroundColor: '#2a2a2a', padding: 20, borderRadius: 15, marginTop: 20, borderWidth: 1, borderColor: '#444' },
   cardName: { color: '#fff', fontSize: 26, fontWeight: 'bold' },
   cardType: { color: '#aaa', fontSize: 16, marginTop: 5, fontStyle: 'italic' },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 25 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 25, marginBottom: 20 },
   statItem: { alignItems: 'center' },
   statLabel: { color: '#888', fontSize: 12, textTransform: 'uppercase', marginBottom: 5 },
   statValue: { color: '#3a86ff', fontSize: 20, fontWeight: 'bold' },
+  refreshButton: { backgroundColor: '#3a86ff', padding: 15, borderRadius: 10, alignItems: 'center' },
+  refreshText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });
